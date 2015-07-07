@@ -16,11 +16,13 @@ public class SimplePageRank {
 		HashMap<String,Integer> docnames =  new HashMap<String,Integer>();
 		HashMap<Integer,String> docids =  new HashMap<Integer,String>();
 		HashMap<Integer,Integer> olinkcount =  new HashMap<Integer,Integer>();
-
+		
+		
 		generateDocNamesFromFile(location,docnames,docids);
-		readInlinkMappingFromFile(location,inlinks,docnames,docids);
+		//readInlinkMappingFromFile(location,inlinks,docnames,docids);
 
-		compute(inlinks,olinkcount,docnames,docids);
+		readInlinkMappingFromFile(location,inlinks,docnames,docids);
+		//compute(inlinks,olinkcount);
 	}
 
 	public static void computePageRank(HashMap<String, JSONArray> inlinkmapping) throws Exception
@@ -36,8 +38,9 @@ public class SimplePageRank {
 		compute(inlinks,olinkcount,docnames,docids);
 	}
 
+
 	private static void compute(HashMap<Integer, ArrayList<Integer>> inlinks, HashMap<Integer, Integer> olinkcount, HashMap<String, Integer> docnames, HashMap<Integer, String> docids) {
-		generateOutputCountMapping(inlinks,olinkcount);
+		generateOutputCountMapping(inlinks,olinkcount,docnames);
 
 		HashMap<Integer,Float> PR = null;
 		PR = iterateToConverge(inlinks,docnames,olinkcount,docids);
@@ -67,7 +70,7 @@ public class SimplePageRank {
 
 
 	private static void readInlinkMappingFromFile(String location,
-			HashMap<Integer, ArrayList<Integer>> inlinks, HashMap<String, Integer> docnames, HashMap<Integer, String> docids) throws Exception {
+			HashMap<Integer, ArrayList<Integer>> inlinks,HashMap<String, Integer> docnames, HashMap<Integer, String> docids) throws Exception {
 		BufferedReader br = new BufferedReader(new FileReader(new File(location)));
 		String line = null;
 		while((line=br.readLine())!=null)
@@ -79,13 +82,6 @@ public class SimplePageRank {
 			for(int i=1;i<str.length;i++)
 			{
 				String u = str[i];
-				if(!docnames.containsKey(u))
-				{
-					int size = docnames.size();
-					docnames.put(u,size);
-					docids.put(size,u);
-				}
-
 				int key = docnames.get(u);
 				a.add(key);
 			}
@@ -129,7 +125,7 @@ public class SimplePageRank {
 
 	private static void generateOutputCountMapping(
 			HashMap<Integer, ArrayList<Integer>> inlinks,
-			HashMap<Integer, Integer> olinkcount) 
+			HashMap<Integer, Integer> olinkcount, HashMap<String, Integer> docnames) 
 	{
 		Iterator<Integer> itr = inlinks.keySet().iterator();
 		while(itr.hasNext())
@@ -140,6 +136,7 @@ public class SimplePageRank {
 			while(linkitr.hasNext())
 			{
 				int link = (int)linkitr.next();
+				//if(!inlinks.containsKey(link)) System.out.println(link);
 				int count = olinkcount.containsKey(link) ? olinkcount.get(link) : 0;
 				olinkcount.put(link, ++count);
 			}
@@ -206,12 +203,12 @@ public class SimplePageRank {
 
 	private static HashMap<Integer, Float> converge(float randomcons, HashMap<Integer, Float> pR,
 			HashMap<Integer, ArrayList<Integer>> inlinks, HashMap<Integer, Integer> olinkcount) {
-		System.out.println(inlinks.size());
-		Iterator<Integer> keys = inlinks.keySet().iterator();
-		HashMap<Integer, Float> newPR = new HashMap<Integer, Float>();
+		Iterator<Integer> keys = pR.keySet().iterator();
+		HashMap<Integer, Float> newPR = new HashMap<Integer, Float>(pR);
 		while(keys.hasNext()){
 			int key = (int) keys.next();
-			newPR.put(key, (float) (randomcons+0.85*computeInlinksPR(pR,inlinks.get(key),olinkcount)));
+			if(!inlinks.containsKey(key)) newPR.put(key, randomcons);
+			else newPR.put(key, (float) (randomcons+0.85*computeInlinksPR(pR,inlinks.get(key),olinkcount)));
 		}
 		return newPR;
 	}
@@ -222,6 +219,8 @@ public class SimplePageRank {
 		for(int i=0;i<inlinks.size();i++)
 		{
 			int doc = inlinks.get(i);
+			//System.out.println(doc);
+			//System.out.println(doc+" "+olinkcount.containsKey(doc) + " "+pR.get(doc)+" "+pR.size()+" "+olinkcount.size());
 			score+=(pR.get(doc))/olinkcount.get(doc);
 		}
 		return score;
@@ -240,7 +239,7 @@ public class SimplePageRank {
 			docnames.put(url, size);
 			docids.put(size, url);
 		}
-		System.out.println("Documents added");
+		System.out.println("Documents added " + docnames.size());
 		
 	}
 
@@ -260,14 +259,15 @@ public class SimplePageRank {
 			Set<Integer> urlints = new HashSet<Integer>();
 			for(int i=0;i<a.size();i++)
 			{
-				if(!docnames.containsKey(u))
+				String link = (String)a.get(i);
+				if(!docnames.containsKey(link))
 				{
 					int size = docnames.size();
-					docnames.put(u,size);
-					docids.put(size,u);
+					docnames.put(link,size);
+					docids.put(size,link);
 				}
 
-				int key = docnames.get(u);
+				int key = docnames.get(link);
 				urlints.add(key);
 			}
 			inlinks.put(url, new ArrayList<Integer>(urlints));
